@@ -1,11 +1,10 @@
 #  Ross Todd
 #  BSc (Hons) Software Development
-#  Honours Project 2026
-#  ARIMA model — walk-forward validation and 5-day forecast for BARC, LLOY, HSBA
-
+#  Honours Project 2026 - A Stock Market Prediction Application Prototype
+#
 # data.py — Data Layer
 # Handles all data fetching, caching, validation, and cleaning via yfinance
-
+#
 # All three models (ARIMA, RF, GRU) rely on this layer for raw OHLCV data.
 # Data is fetched once, cached for one hour, and cleaned consistently so
 # that any differences in model performance are attributable to the model

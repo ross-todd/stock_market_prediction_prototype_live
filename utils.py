@@ -1,7 +1,6 @@
 #  Ross Todd
 #  BSc (Hons) Software Development
-#  Honours Project 2026
-#  ARIMA model — walk-forward validation and 5-day forecast for BARC, LLOY, HSBA
+#  Honours Project 2026 - A Stock Market Prediction Application Prototype
 
 # # utils.py — Helpers Layer
 # Constants, colours, date calculations, and custom styling

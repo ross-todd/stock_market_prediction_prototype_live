@@ -1,11 +1,10 @@
 #  Ross Todd
 #  BSc (Hons) Software Development
-#  Honours Project 2026
-#  ARIMA model — walk-forward validation and 5-day forecast for BARC, LLOY, HSBA
-
+#  Honours Project 2026 - A Stock Market Prediction Application Prototype
+#
 # app.py — Presentation Layer
 # Full app: home screen, predictions screen, sidebar routing
-
+#
 # This file is the single entry point for the Streamlit application.
 # It handles all user interaction, screen routing, and visualisation.
 # The presentation layer is deliberately kept separate from data fetching

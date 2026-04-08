@@ -7,3 +7,5 @@ statsmodels
 tensorflow
 numpy
 joblib
+tensorflow==2.13.0
+streamlit==1.56.0

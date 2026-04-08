@@ -1,11 +1,9 @@
-streamlit
+streamlit==1.56.0
 plotly
 pandas
 yfinance
 scikit-learn
 statsmodels
-tensorflow
 numpy
 joblib
-tensorflow==2.13.0
-streamlit==1.56.0
+tensorflow==2.16.2

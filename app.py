@@ -289,12 +289,6 @@ class HomeScreen:
         st.plotly_chart(fig, width='stretch', config={'displayModeBar': False})
 
     def _render_data_table(self):
-        # ── OHLCV table ───────────────────────────────────────────────────
-        # Only rendered for single-company selection. All Companies view
-        # would produce a table too wide to be readable, and the chart
-        # already shows all the relevant comparison information.
-        # Data is re-fetched for the selected ticker only to keep the table
-        # independent of the multi-ticker DataFrame used by the chart.
         if self.selected_company == "All Companies":
             return
         try:
@@ -302,12 +296,10 @@ class HomeScreen:
             start_str = st.session_state['start_date'].strftime('%Y-%m-%d')
             end_str   = st.session_state['end_date'].strftime('%Y-%m-%d')
             range_lbl = st.session_state.get('active_range', 'Custom')
+            
             if range_lbl == 'Custom':
                 range_lbl = f"{start_str} → {end_str}"
 
-            # ── Spinner guard ─────────────────────────────────────────────
-            # Same pattern as the chart fetch above — spinner only shown on
-            # the first load for this ticker and date range combination.
             table_cache_key = f"table_loaded_{ticker}_{start_str}_{end_str}"
             if table_cache_key not in st.session_state:
                 with st.spinner("Loading historical data..."):
@@ -327,14 +319,27 @@ class HomeScreen:
                 unsafe_allow_html=True
             )
 
-            table_data_df = historical_data_df.copy().dropna()
+            # --- THE FIX STARTS HERE ---
+            table_data_df = historical_data_df.copy()
+            
+            # 1. Flatten MultiIndex columns immediately if they exist
             if isinstance(table_data_df.columns, pd.MultiIndex):
                 table_data_df.columns = table_data_df.columns.get_level_values(0)
+            
+            # 2. Force all column names to be strings to prevent 'str/int' confusion
+            table_data_df.columns = [str(c) for c in table_data_df.columns]
+            
+            # 3. Reset index and ensure Date is a datetime object
             table_data_df = table_data_df.reset_index()
+            table_data_df.rename(columns={table_data_df.columns[0]: 'Date'}, inplace=True)
             table_data_df['Date'] = pd.to_datetime(table_data_df['Date'])
 
-            desired_cols  = ['Date', 'Open', 'High', 'Low', 'Close', 'Adj Close', 'Volume']
+            # 4. Filter to desired columns
+            desired_cols = ['Date', 'Open', 'High', 'Low', 'Close', 'Adj Close', 'Volume']
             table_data_df = table_data_df[[c for c in desired_cols if c in table_data_df.columns]]
+            
+            # --- THE FIX ENDS HERE ---
+
             table_data_df = table_data_df.sort_values(by='Date', ascending=False)
 
             start_dt = pd.to_datetime(start_str)
@@ -344,17 +349,20 @@ class HomeScreen:
             ].copy()
 
             table_data_df['Date'] = table_data_df['Date'].dt.strftime('%Y-%m-%d')
+            
             for col in ['Open', 'High', 'Low', 'Close', 'Adj Close']:
                 if col in table_data_df.columns:
-                    table_data_df[col] = table_data_df[col].apply(
+                    table_data_df[col] = pd.to_numeric(table_data_df[col], errors='coerce').map(
                         lambda x: f'{x:,.2f}' if pd.notna(x) else ''
                     )
 
-            st.dataframe(table_data_df, width='stretch')
+            st.dataframe(table_data_df, width='stretch', hide_index=True)
             st.markdown("<br>", unsafe_allow_html=True)
 
         except Exception as e:
             st.error(f"Could not load historical data table: {e}")
+            # Log the full error to the terminal for debugging
+            print(f"DEBUG: Table Error: {e}")
 
     def _render_data_disclaimer(self):
         render_data_disclaimer()

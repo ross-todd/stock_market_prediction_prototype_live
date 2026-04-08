@@ -295,18 +295,9 @@ class HomeScreen:
             ticker    = TICKERS[self.selected_company]
             start_str = st.session_state['start_date'].strftime('%Y-%m-%d')
             end_str   = st.session_state['end_date'].strftime('%Y-%m-%d')
-            range_lbl = st.session_state.get('active_range', 'Custom')
             
-            if range_lbl == 'Custom':
-                range_lbl = f"{start_str} → {end_str}"
-
-            table_cache_key = f"table_loaded_{ticker}_{start_str}_{end_str}"
-            if table_cache_key not in st.session_state:
-                with st.spinner("Loading historical data..."):
-                    historical_data_df = StockDataService.get_stock_data([ticker], start_str, end_str)
-                st.session_state[table_cache_key] = True
-            else:
-                historical_data_df = StockDataService.get_stock_data([ticker], start_str, end_str)
+            # Fetch data
+            historical_data_df = StockDataService.get_stock_data([ticker], start_str, end_str)
 
             if historical_data_df is None or historical_data_df.empty:
                 st.info("No data available for the selected period.")
@@ -315,54 +306,56 @@ class HomeScreen:
             st.markdown("---")
             st.markdown(
                 f"<p style='font-size:16px;font-weight:bold;'>"
-                f"Historical Daily Data – {self.selected_company} ({range_lbl})</p>",
+                f"Historical Daily Data – {self.selected_company}</p>",
                 unsafe_allow_html=True
             )
 
-            # --- THE FIX STARTS HERE ---
-            table_data_df = historical_data_df.copy()
+            # --- BREAK THE MULTIINDEX IMMEDIATELY ---
+            # This is the most likely spot for the error
+            temp_df = historical_data_df.copy()
             
-            # 1. Flatten MultiIndex columns immediately if they exist
-            if isinstance(table_data_df.columns, pd.MultiIndex):
-                table_data_df.columns = table_data_df.columns.get_level_values(0)
+            # If columns are (Close, BARC.L), this turns them into just (Close)
+            if isinstance(temp_df.columns, pd.MultiIndex):
+                temp_df.columns = [col[0] if isinstance(col, tuple) else col for col in temp_df.columns]
             
-            # 2. Force all column names to be strings to prevent 'str/int' confusion
-            table_data_df.columns = [str(c) for c in table_data_df.columns]
+            # Ensure index is a column named Date
+            temp_df = temp_df.reset_index()
+            temp_df.columns = [str(c) for c in temp_df.columns] # Force all to strings
             
-            # 3. Reset index and ensure Date is a datetime object
-            table_data_df = table_data_df.reset_index()
-            table_data_df.rename(columns={table_data_df.columns[0]: 'Date'}, inplace=True)
-            table_data_df['Date'] = pd.to_datetime(table_data_df['Date'])
+            # Find the date column (it might be named 'index' or 'Date')
+            date_col = temp_df.columns[0] 
+            temp_df.rename(columns={date_col: 'Date'}, inplace=True)
+            
+            # Convert Date to datetime for filtering
+            temp_df['Date'] = pd.to_datetime(temp_df['Date'])
 
-            # 4. Filter to desired columns
-            desired_cols = ['Date', 'Open', 'High', 'Low', 'Close', 'Adj Close', 'Volume']
-            table_data_df = table_data_df[[c for c in desired_cols if c in table_data_df.columns]]
-            
-            # --- THE FIX ENDS HERE ---
+            # Filter columns
+            desired = ['Date', 'Open', 'High', 'Low', 'Close', 'Adj Close', 'Volume']
+            available = [c for c in desired if c in temp_df.columns]
+            final_df = temp_df[available].copy()
 
-            table_data_df = table_data_df.sort_values(by='Date', ascending=False)
+            # Filter Rows by Date Range
+            mask = (final_df['Date'] >= pd.to_datetime(start_str)) & \
+                   (final_df['Date'] <= pd.to_datetime(end_str))
+            final_df = final_df.loc[mask].sort_values('Date', ascending=False)
 
-            start_dt = pd.to_datetime(start_str)
-            end_dt   = pd.to_datetime(end_str) + pd.Timedelta(days=1)
-            table_data_df = table_data_df[
-                (table_data_df['Date'] >= start_dt) & (table_data_df['Date'] < end_dt)
-            ].copy()
-
-            table_data_df['Date'] = table_data_df['Date'].dt.strftime('%Y-%m-%d')
-            
+            # Format numbers for display
             for col in ['Open', 'High', 'Low', 'Close', 'Adj Close']:
-                if col in table_data_df.columns:
-                    table_data_df[col] = pd.to_numeric(table_data_df[col], errors='coerce').map(
+                if col in final_df.columns:
+                    final_df[col] = pd.to_numeric(final_df[col], errors='coerce').map(
                         lambda x: f'{x:,.2f}' if pd.notna(x) else ''
                     )
 
-            st.dataframe(table_data_df, width='stretch', hide_index=True)
-            st.markdown("<br>", unsafe_allow_html=True)
+            # Final Date Format
+            final_df['Date'] = final_df['Date'].dt.strftime('%Y-%m-%d')
+
+            st.dataframe(final_df, use_container_width=True, hide_index=True)
 
         except Exception as e:
+            # This will now print the exact line causing the crash in your Streamlit logs
+            import traceback
             st.error(f"Could not load historical data table: {e}")
-            # Log the full error to the terminal for debugging
-            print(f"DEBUG: Table Error: {e}")
+            print(traceback.format_exc())
 
     def _render_data_disclaimer(self):
         render_data_disclaimer()

@@ -27,6 +27,9 @@ import pandas as pd
 import numpy as np
 import streamlit as st
 from typing import Tuple, Optional
+from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
+from data import _load_single_ticker
 
 import joblib
 import os
@@ -41,9 +44,11 @@ TRAINED_MODELS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 't
 # ── Saved data directory ──────────────────────────────────────────────────────
 SAVED_DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "saved_data")
 
-# ── Fixed date window matching the comparative analysis exactly ───────────────
-DATA_START = "2021-02-28"
-DATA_END   = "2026-02-28"
+# ── Rolling 5-year window, with UK 17:00 market close cutoff ─────────────────
+_now_uk    = datetime.now(ZoneInfo("Europe/London"))
+_last_day  = _now_uk.date() if _now_uk.hour >= 17 else _now_uk.date() - timedelta(days=1)
+DATA_END   = _last_day.strftime("%Y-%m-%d")
+DATA_START = _last_day.replace(year=_last_day.year - 5).strftime("%Y-%m-%d")
 
 # ── Forecast weights (50/20/10/10/10) ─────────────────────────────────────────
 # Matches day_weights in rf_analysis.py / arima_analysis.py / gru_analysis.py
@@ -95,8 +100,7 @@ def _load_ticker_data(ticker: str) -> pd.DataFrame:
         df = pd.read_csv(cache_path, index_col=0, parse_dates=True)
         return df.sort_index()
 
-    from data_loader import load_ticker_cached
-    return load_ticker_cached(ticker, DATA_START, DATA_END, verbose=False)
+    return _load_single_ticker(ticker)
 
 
 # ══════════════════════════════════════════════════════════════════════════

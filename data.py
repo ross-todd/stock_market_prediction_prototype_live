@@ -9,17 +9,13 @@
 # Data is fetched once, cached for one hour, and cleaned consistently so
 # that any differences in model performance are attributable to the model
 # class itself rather than inconsistent input data.
-#
-# Updated: StockDataService now loads from the comparative analysis saved_data
-# cache (saved_data/TICKER_20210228_20260228.csv) before falling back to
-# yfinance. This ensures the app uses identical data to the dissertation,
-# eliminating any discrepancy caused by yfinance returning updated prices.
 
 import os
 import yfinance as yf
 import pandas as pd
 import streamlit as st
 from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 from typing import Optional
 
 
@@ -28,9 +24,13 @@ from typing import Optional
 # the working directory it is launched from.
 SAVED_DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "saved_data")
 
-# Fixed date window matching the comparative analysis exactly
-DATA_START = "2021-02-28"
-DATA_END   = "2026-02-28"
+# ── Rolling 5-year window, with UK 17:00 market close cutoff ─────────────────
+# Before 17:00 UK time, yesterday is used as DATA_END to avoid including
+# incomplete intraday data. At or after 17:00, today is included.
+_now_uk    = datetime.now(ZoneInfo("Europe/London"))
+_last_day  = _now_uk.date() if _now_uk.hour >= 17 else _now_uk.date() - timedelta(days=1)
+DATA_END   = _last_day.strftime("%Y-%m-%d")
+DATA_START = _last_day.replace(year=_last_day.year - 5).strftime("%Y-%m-%d")
 
 
 # ══════════════════════════════════════════════════════════════════════════
@@ -57,7 +57,8 @@ def _load_single_ticker(ticker: str) -> Optional[pd.DataFrame]:
     # Cache miss — download from yfinance and save for future runs
     try:
         os.makedirs(SAVED_DATA_DIR, exist_ok=True)
-        raw = yf.download(ticker, start=DATA_START, end=DATA_END,
+        end_exclusive = (_last_day + timedelta(days=1)).strftime("%Y-%m-%d")
+        raw = yf.download(ticker, start=DATA_START, end=end_exclusive,
                           progress=False, auto_adjust=False)
 
         if raw is None or raw.empty:

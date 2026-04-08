@@ -36,8 +36,8 @@ A Streamlit web application that generates five-day price forecasts for three UK
 **1. Clone the repository**
 
 ```bash
-git clone https://github.com/ross-todd/stock_market_prediction_application.git
-cd stock_market_prediction_application
+git clone https://github.com/ross-todd/stock_market_prediction_application_live.git
+cd stock_market_prediction_application_live
 ```
 
 **2. Create and activate a virtual environment**

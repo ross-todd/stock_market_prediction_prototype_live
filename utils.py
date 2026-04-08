@@ -1,6 +1,6 @@
 #  Ross Todd
 #  BSc (Hons) Software Development
-#  Honours Project 2026 - A Stock Market Prediction Application Prototype
+#  Honours Project 2026 - A Stock Market Prediction Application Prototype - Live Version
 
 # # utils.py — Helpers Layer
 # Constants, colours, date calculations, and custom styling
@@ -41,7 +41,7 @@ MODEL_COLOR_MAP = {
 
 # Returns a start date based on a preset range label
 def get_start_date_from_range(range_selection: str):
-    today = datetime(2026, 2, 27)  # Fixed date to replicate the comparative analysis window exactly
+    today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
     mapping = {
         '1D': BDay(1),
         '1W': BDay(5),

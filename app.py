@@ -19,6 +19,7 @@ import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
 from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 import sys
 import os
 
@@ -30,7 +31,7 @@ from utils import (
     BANK_COLOR_MAP, MODEL_COLOR_MAP, get_start_date_from_range,
     GLOBAL_CSS, DATE_RANGE_BUTTONS_CSS, PREDICTIONS_CSS
 )
-from data import StockDataService
+from data import StockDataService, DATA_START
 from models import ForecastService
 
 
@@ -363,8 +364,7 @@ class HomeScreen:
 #   PREDICTIONS SCREEN
 #   Handles model selection routing and generates 5-day forecasts for
 #   a single selected company. Date inputs are disabled on this screen
-#   since the models are trained on a fixed 2021–2026 window and forecasts
-#   are fixed to 2026-02-28 to align with the comparative analysis.
+#   since predictions always run on the most recent available trading day.
 #   All Companies is blocked here because each model requires a single 
 #   ticker as input.
 # ══════════════════════════════════════════════════════════════════════════
@@ -389,22 +389,23 @@ class PredictionsScreen:
         ticker_symbol = TICKERS[self.selected_company]
 
         try:
-            today_str = '2026-02-28'
+            _now_uk      = datetime.now(ZoneInfo("Europe/London"))
+            _last_day    = _now_uk.date() if _now_uk.hour >= 17 else _now_uk.date() - timedelta(days=1)
+            today_str    = _last_day.strftime('%Y-%m-%d')
 
             # ── Spinner guard ─────────────────────────────────────────────
-            # Market data for the predictions screen covers the full
-            # 2021–2026 window and never changes, so the spinner is only
-            # shown on the very first load of the predictions screen.
+            # Spinner only shown on the first load of the predictions screen.
+            # Subsequent visits return instantly from cache.
             predictions_data_cache_key = "predictions_market_data_loaded"
             if predictions_data_cache_key not in st.session_state:
                 with st.spinner("Loading market data..."):
                     df_recent = StockDataService.get_stock_data(
-                        TICKER_LIST, '2021-02-28', today_str
+                        TICKER_LIST, DATA_START, today_str
                     )
                 st.session_state[predictions_data_cache_key] = True
             else:
                 df_recent = StockDataService.get_stock_data(
-                    TICKER_LIST, '2021-02-28', today_str
+                    TICKER_LIST, DATA_START, today_str
                 )
 
             if df_recent is None or df_recent.empty:
@@ -426,7 +427,7 @@ class PredictionsScreen:
             # ── Forecast dates ────────────────────────────────────────────
             # Business date range is used so weekends are excluded from the
             # 5-day forecast window, matching how trading days work in practice.
-            future_dates  = pd.bdate_range(start='2026-03-02', periods=5)
+            future_dates  = pd.bdate_range(start=_last_day, periods=6)[1:]
 
             st.divider()
 

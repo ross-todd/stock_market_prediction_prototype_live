@@ -26,6 +26,7 @@ A Streamlit web application that generates five-day price forecasts for three UK
 ├── models.py               # Logic layer — ARIMA, Random Forest, and GRU pipelines
 ├── utils.py                # Helpers — constants, colours, date utilities, CSS
 ├── trained_models/         # Pre-trained RF and GRU model files (.pkl and .keras)
+├── saved_data/             # Cached stock data to reduce API calls
 └── requirements.txt        # Python dependencies
 ```
 

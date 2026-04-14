@@ -24,11 +24,10 @@ from typing import Optional
 # the working directory it is launched from.
 SAVED_DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "saved_data")
 
-# ── Rolling 5-year window, with UK 17:00 market close cutoff ─────────────────
-# Before 17:00 UK time, yesterday is used as DATA_END to avoid including
-# incomplete intraday data. At or after 17:00, today is included.
+# ── Rolling 5-year window ─────────────────────────────────────────────────────
+# DATA_END is always set to today's date. DATA_START is 5 years prior.
 _now_uk    = datetime.now(ZoneInfo("Europe/London"))
-_last_day  = _now_uk.date() if _now_uk.hour >= 17 else _now_uk.date() - timedelta(days=1)
+_last_day = _now_uk.date()
 DATA_END   = _last_day.strftime("%Y-%m-%d")
 DATA_START = _last_day.replace(year=_last_day.year - 5).strftime("%Y-%m-%d")
 

@@ -34,9 +34,7 @@ DATA_START = _last_day.replace(year=_last_day.year - 5).strftime("%Y-%m-%d")
 
 # ══════════════════════════════════════════════════════════════════════════
 #   INTERNAL CACHE LOADER
-#   Attempts to load a single ticker from the saved_data CSV created by
-#   the comparative analysis (data_loader.py). The filename format is:
-#       BARC_L_20210228_20260228.csv
+#   Attempts to load a single ticker from the saved_data CSV
 #   If the file does not exist, falls back to downloading from yfinance
 #   and saves the result so future runs use the cached version.
 # ══════════════════════════════════════════════════════════════════════════
@@ -45,13 +43,14 @@ def _load_single_ticker(ticker: str) -> Optional[pd.DataFrame]:
     ticker_clean = ticker.replace(".", "_")
     start_clean  = DATA_START.replace("-", "")
     end_clean    = DATA_END.replace("-", "")
-    cache_path   = os.path.join(SAVED_DATA_DIR,
-                                f"{ticker_clean}_{start_clean}_{end_clean}.csv")
+    cache_path   = os.path.join(SAVED_DATA_DIR, f"{ticker_clean}.csv")
 
     if os.path.exists(cache_path):
         df = pd.read_csv(cache_path, index_col=0, parse_dates=True)
         df = df.sort_index()
-        return df
+        last_date = df.index.max().strftime("%Y-%m-%d")
+        if last_date >= DATA_END:
+            return df  # Already up to date
 
     # Cache miss — download from yfinance and save for future runs
     try:
